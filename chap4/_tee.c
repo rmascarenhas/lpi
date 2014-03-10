@@ -30,6 +30,10 @@
 #define BUF_SIZ 1024
 #endif
 
+#ifndef MAX_OUT_FILES
+#define MAX_OUT_FILES 128
+#endif
+
 typedef enum { FALSE, TRUE } Bool;
 
 void helpAndLeave(const char *progname, int status);
@@ -39,12 +43,14 @@ int
 main(int argc, char *argv[]) {
   int opt;
   Bool append = FALSE;
-  char *filename;
 
   int fd, flags;
+  int fds[MAX_OUT_FILES];
   mode_t mode;
   char buf[BUF_SIZ + 1];
   ssize_t numRead;
+
+  int i, numFiles = 0;
 
   /* Command line arguments parsing */
 
@@ -61,8 +67,6 @@ main(int argc, char *argv[]) {
     helpAndLeave(argv[0], EXIT_FAILURE);
   }
 
-  filename = argv[optind];
-
   /* stdin redirection */
 
   flags = O_CREAT | O_WRONLY;
@@ -74,9 +78,14 @@ main(int argc, char *argv[]) {
     flags |= O_TRUNC;
   }
 
-  fd = open(filename, flags, mode);
-  if (fd == -1) {
-    failure("open");
+  for (i = optind; i < argc; ++i) {
+    fds[i - optind] = fd = open(argv[i], flags, mode);
+
+    if (fd == -1) {
+      failure("open");
+    }
+
+    ++numFiles;
   }
 
   while ((numRead = read(STDIN_FILENO, buf, BUF_SIZ)) > 0) {
@@ -88,13 +97,17 @@ main(int argc, char *argv[]) {
       failure("write");
     }
 
-    if (write(fd, buf, numRead) != numRead) {
-      failure("write");
+    for (i = 0; i < numFiles; ++i) {
+      if (write(fds[i], buf, numRead) != numRead) {
+        failure("write");
+      }
     }
   }
 
-  if (close(fd) == -1) {
-    failure("close");
+  for (i = 0; i < numFiles; ++i) {
+    if (close(fds[i]) == -1) {
+      failure("close");
+    }
   }
 
   return 0;
@@ -102,7 +115,7 @@ main(int argc, char *argv[]) {
 
 void
 helpAndLeave(const char *progname, int status) {
-  fprintf(stderr, "Usage: %s [-a] <file>\n", progname);
+  fprintf(stderr, "Usage: %s [-a] <file1> <file2> ... <fileN>\n", progname);
   exit(status);
 }
 
