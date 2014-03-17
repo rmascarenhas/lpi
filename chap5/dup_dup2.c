@@ -6,7 +6,8 @@
  * new file descriptor, you can use dup(2), which will create a copy with that file
  * descriptor number.
  *
- * This program copies
+ * This program copies two file descriptors given on the command line and write to them
+ * (configurable at compilation time) to ensure the copy went fine.
  *
  * Usage:
  *
