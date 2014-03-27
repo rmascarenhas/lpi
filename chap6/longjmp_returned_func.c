@@ -16,7 +16,7 @@
  *    # will print its steps towards undefined behavior
  *
  *
- * In practice, this program didn't could actually go back to the returned function
+ * In practice, this program could actually go back to the returned function
  * as if nothing happened. However, tell the compiler to optimize the code and chaos
  * will appear.
  *
