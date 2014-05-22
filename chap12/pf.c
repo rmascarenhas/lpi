@@ -183,6 +183,8 @@ printProcessInfo(int statusFd, char *fd, char *pid) {
       strncpy(command, line + 5, BUF_SIZ);
       commandFound = TRUE;
     }
+
+    line = strtok(NULL, "\n");
   }
 
   if (commandFound) {
