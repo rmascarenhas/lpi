@@ -62,7 +62,7 @@
  * When we add the O_SYNC flag, we completely skip the kernel cache and force that
  * every write system call actually saves the data to the disk. This has a **huge**
  * impact as can be seen in the results. For smaller buffer sizes, the time is just
- * too big to even consider (I left it copying over night and it was not enogh
+ * too big to even consider (I left it copying overnight and it was not enough
  * for a whole copy).
  */
 
