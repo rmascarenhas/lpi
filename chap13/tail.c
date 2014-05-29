@@ -51,13 +51,23 @@ main(int argc, char *argv[]) {
 
   int opt;
   unsigned int count = 10;
-  char *file;
+  char *file, *p;
 
   opterr = 0;
   while ((opt = getopt(argc, argv, "n:")) != -1) {
     switch (opt) {
       case 'n':
-        count = atol(optarg);
+        errno = 0;
+        count = strtol(optarg, &p, 10);
+        if (errno != 0) {
+          pexit("strtol");
+        }
+
+        /* given argument is not a valid number */
+        if (p == optarg) {
+          helpAndLeave(argv[0], EXIT_FAILURE);
+        }
+
         break;
 
       case '?':
