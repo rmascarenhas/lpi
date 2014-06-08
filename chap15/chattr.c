@@ -2,7 +2,7 @@
  *
  * The chattr(1) command allows the user to change extended attributes for a file
  * maintained by the filesystem. The feature was introduced on ext2 and is a Linux
- * extensio, although modern BSDs have equilalent functionality.
+ * extension, although modern BSDs have equivalent functionality.
  *
  * The list of supported attributes are:
  *
@@ -20,7 +20,7 @@
  *    u - file can be undeleted
  *
  * Note that this program will only attempt the requested file attributes.
- * Actual support for their functionality is condiotioned to the running
+ * Actual support for their functionality is conditioned to the running
  * kernel version.
  *
  * Usage:

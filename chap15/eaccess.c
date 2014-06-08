@@ -97,7 +97,7 @@ pexit(const char *fCall) {
  * using the effective credentials:
  *
  *  * If the process owner is the owner of the file, owner permissions are checked;
- *  * If it is not the owner, but belongs to the onwer group, group permissions
+ *  * If it is not the owner, but belongs to the owner group, group permissions
  *    are checked;
  *  * If none of the above, then the `other' permissions apply.
  */
