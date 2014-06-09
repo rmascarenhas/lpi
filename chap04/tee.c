@@ -1,5 +1,4 @@
-/*
- * _tee.c - a minimum tee(1) implementation
+/* tee.c - a minimum tee(1) implementation
  *
  * The tee(1) utility copies its standard input to both stdout and  to a file.
  * This allows the user to view the output of a command on the console while
