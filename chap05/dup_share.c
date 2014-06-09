@@ -12,9 +12,12 @@
  * Author: Renato Mascarenhas Costa
  */
 
+#define _BSD_SOURCE /* mkstemp function */
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -35,7 +38,7 @@ void reportFileOffset(int fd, int newfd);
 void writeTo(int fd);
 
 int
-main(int argc, char *argv[]) {
+main() {
   int fd, newfd;
   int flags, newFlags;
 

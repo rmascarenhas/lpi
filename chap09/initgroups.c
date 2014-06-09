@@ -22,6 +22,7 @@
 #define _BSD_SOURCE
 
 #include <unistd.h>
+#include <sys/param.h> /* NGROUPS_MAX */
 #include <grp.h>
 #include <pwd.h>
 #include <limits.h>
@@ -62,7 +63,7 @@ int
 main(int argc, char *argv[]) {
   char *user, *group;
   gid_t gid, suppGroups[MAX_GROUPS_SIZ];
-  int nGroups, i;
+  int nGroups, i, status;
 
   if (argc != 3) {
     helpAndLeave(argv[0], EXIT_FAILURE);
@@ -70,11 +71,13 @@ main(int argc, char *argv[]) {
 
   user = argv[1];
   group = argv[2];
-  gid = groupIdFromName(group);
+  status = groupIdFromName(group);
 
-  if (gid == -1) {
+  if (status == -1) {
     fprintf(stderr, "Unknown group: %s\n", group);
     exit(EXIT_FAILURE);
+  } else {
+    gid = status;
   }
 
   if (_initgroups(user, gid) == -1) {
@@ -140,7 +143,7 @@ int
 getGroups(const char *user, int size, gid_t *groupsList) {
   struct group *g;
   int n = 0;
-  size_t usernameMax;
+  long usernameMax;
   char **p;
 
   usernameMax = sysconf(_SC_LOGIN_NAME_MAX);

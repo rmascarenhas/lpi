@@ -47,16 +47,19 @@ uid_t uidFromUsername(char *username);
 
 int
 main(int argc, char *argv[]) {
+  int status;
   uid_t uid;
 
   if (argc == 1) {
     uid = geteuid();
   } else if (argc == 2) {
-    uid = uidFromUsername(argv[1]);
+    status = uidFromUsername(argv[1]);
 
-    if (uid == -1) {
+    if (status == -1) {
       fprintf(stderr, "%s: Username not found: %s\n", argv[0], argv[1]);
       exit(EXIT_FAILURE);
+    } else {
+      uid = status;
     }
   } else {
     helpAndLeave(argv[0], EXIT_FAILURE);
@@ -110,6 +113,7 @@ main(int argc, char *argv[]) {
     while (!done) {
       line = strtok(buf, "\n");
 
+      pid = -1;
       while (line != NULL) {
         /* check for the user of the process */
         if (strncmp(line, "Uid:", 4) == 0) {
@@ -189,5 +193,6 @@ uidFromUsername(char *username) {
   } else {
     /* error in getpwnam(3) call */
     pexit("getpwnam");
+    return -1; /* should never get to this point */
   }
 }

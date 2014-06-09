@@ -42,7 +42,7 @@ typedef enum { FALSE, TRUE } Bool;
 
 struct process {
   char command[BUF_SIZ];
-  unsigned int children_count;
+  int children_count;
   uid_t children[CHILDREN_MAX];
 };
 
@@ -63,7 +63,7 @@ void buildProcessDataStructure(struct process *processes);
 void printTree(struct process *processes, int root, int level);
 
 int
-main(int argc, char *argv[]) {
+main() {
   long pid_max;
 
   /* this is the data structure that will hold all the information of the whole
@@ -177,6 +177,7 @@ buildProcessDataStructure(struct process *processes) {
 
     parentFound = commandFound = FALSE;
     line = strtok(statusFile, "\n");
+    ppid = -1;
     while (line != NULL) {
       /* check for parent PID */
       if (strncmp(line, "PPid:", 5) == 0) {
@@ -201,7 +202,10 @@ buildProcessDataStructure(struct process *processes) {
 
     /* save process data in hierarchy data structure */
     strncpy(processes[pid].command, command, BUF_SIZ);
-    processes[ppid].children[processes[ppid].children_count++] = pid;
+
+    if (ppid > 0) {
+      processes[ppid].children[processes[ppid].children_count++] = pid;
+    }
   }
 
   if (errno != 0) {
@@ -223,7 +227,7 @@ printTree(struct process *processes, int root, int level) {
     printf("  ");
   }
 
-  printf("- (%ld) %s\n", root, processes[root].command);
+  printf("- (%ld) %s\n", (long) root, processes[root].command);
 
   if (processes[root].children_count > 0) {
     ++level;

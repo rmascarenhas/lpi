@@ -29,6 +29,8 @@
  * Author: Renato Mascarenhas Costa
  */
 
+#define _XOPEN_SOURCE /* getopt function */
+
 #include <unistd.h>
 #include <errno.h>
 

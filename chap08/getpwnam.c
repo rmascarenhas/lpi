@@ -13,6 +13,8 @@
  * Author: Renato Mascarenhas Costa
  */
 
+#define _BSD_SOURCE /* getpwent family of functions */
+
 #include <sys/types.h>
 #include <unistd.h>
 #include <pwd.h>
@@ -75,7 +77,7 @@ pexit(const char *fCall) {
 struct passwd*
 _getpwnam(const char *name) {
   struct passwd *p;
-  size_t usernameMax;
+  long usernameMax;
 
   usernameMax = sysconf(_SC_LOGIN_NAME_MAX);
   if (usernameMax == -1) {

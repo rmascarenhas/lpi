@@ -49,6 +49,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,7 +68,6 @@ static const char byte[] = { AA_BYTE };
 
 int
 main(int argc, char *argv[]) {
-  int i;
   int fd, flags, numBytes, numWritten;
   char *filename;
   mode_t mode;
@@ -98,7 +98,7 @@ main(int argc, char *argv[]) {
     pexit("open");
   }
 
-  writeBytes(fd, numBytes, useAppend);
+  numWritten = writeBytes(fd, numBytes, useAppend);
 
   if (close(fd) == -1) {
     pexit("close");

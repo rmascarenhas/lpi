@@ -13,9 +13,13 @@
  * Author: Renato Mascarenhas Costa
  */
 
+#define _BSD_SOURCE /* mkstemp function */
+
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <malloc.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +35,7 @@ ssize_t _readv(int fd, const struct iovec *iov, int iovcnt);
 ssize_t _writev(int fd, const struct iovec *iov, int iovcnt);
 
 int
-main(int argc, char *argv[]) {
+main() {
   int fd;
   struct iovec iovInput[3];
   struct iovec iovOutput[3];

@@ -21,6 +21,8 @@
  * Author: Renato Mascarenhas Costa
  */
 
+#define _BSD_SOURCE /* readlink function */
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -125,6 +127,10 @@ main(int argc, char *argv[]) {
     if (closedir(procpid) == -1) {
       pexit("closedir");
     }
+
+    if (close(statusFd) == -1) {
+      pexit("close");
+    }
   }
 
   if (errno != 0) {
@@ -133,10 +139,6 @@ main(int argc, char *argv[]) {
 
   if (closedir(proc) == -1) {
     pexit("closedir");
-  }
-
-  if (close(statusFd) == -1) {
-    pexit("close");
   }
 
   return EXIT_SUCCESS;

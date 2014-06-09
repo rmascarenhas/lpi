@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#include <string.h>
+
 #ifndef BUF_SIZ
 #define BUF_SIZ 1024
 #endif

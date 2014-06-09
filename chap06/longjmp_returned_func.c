@@ -42,7 +42,7 @@ void tryJump();
 void placeholder();
 
 int
-main(int argc, char *argv[]) {
+main() {
   printf("Program started, starting test.\n");
   installSetJmp();
 

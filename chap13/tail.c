@@ -23,6 +23,8 @@
  * Author: Renato Mascarenhas Costa
  */
 
+#define _XOPEN_SOURCE 600 /* getopt and posix_fadivse */
+
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -50,7 +52,7 @@ main(int argc, char *argv[]) {
   }
 
   int opt;
-  unsigned int count = 10;
+  int count = 10;
   char *file, *p;
 
   opterr = 0;

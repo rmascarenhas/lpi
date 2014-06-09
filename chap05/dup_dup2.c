@@ -29,9 +29,11 @@
  * Author: Renato Mascarenhas Costa
  */
 
+#include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <errno.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -54,7 +56,7 @@ int duplicate(int fd, int newfd, Bool useDup2);
 
 int
 main(int argc, char *argv[]) {
-  int fd, newfd, flags;
+  int fd, newfd;
   int numWritten;
   Bool useDup2;
 
@@ -63,6 +65,7 @@ main(int argc, char *argv[]) {
   }
 
   fd = (int) atol(argv[1]);
+  newfd = -1; /* if not using dup2, this variable will not be used */
 
   if (argc == 3) {
     useDup2 = TRUE;
