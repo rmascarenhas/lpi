@@ -32,19 +32,17 @@ static void pexit(const char *fCall);
 
 int
 main() {
-  sigset_t intSet, previousSet, pendingSet;
+  sigset_t intSet, pendingSet;
 
   sigemptyset(&intSet);
   sigaddset(&intSet, SIGINT);
 
   printf("Blocking SIGINT (%s)\n", strsignal(SIGINT));
-  if (sigprocmask(SIG_BLOCK, &intSet, &previousSet) == -1) {
+  if (sigprocmask(SIG_BLOCK, &intSet, NULL) == -1) {
     pexit("sigprocmask");
   }
 
-  if (raise(SIGINT) != 0) {
-    pexit("raise");
-  }
+  raise(SIGINT);
   printf("Sent SIGINT to self\n");
 
   if (sigpending(&pendingSet) == -1) {
@@ -64,7 +62,7 @@ main() {
   }
 
   printf("Unblocking SIGINT\n");
-  if (sigprocmask(SIG_SETMASK, &previousSet, NULL) == -1) {
+  if (sigprocmask(SIG_UNBLOCK, &intSet, NULL) == -1) {
     pexit("sigprocmask");
   }
 
