@@ -15,10 +15,11 @@
  *    $ ./sysv_api <numop>
  *    numop - the operation number that defines the program behavior. Possible values are:
  *
- *      1 - sighold   - Blocks SIGINT.
- *      2 - sigrelse  - Blocks SIGINT and then removes it from the process signal procmask.
- *      3 - sigignore - Igores SIGINT
- *      4 - sigpause  - suspends execution until SIGINT is received.
+ *      1 - sigset    - Changes SIGINT disposition.
+ *      2 - sighold   - Blocks SIGINT.
+ *      3 - sigrelse  - Blocks SIGINT and then removes it from the process signal procmask.
+ *      4 - sigignore - Igores SIGINT.
+ *      5 - sigpause  - suspends execution until SIGINT is received.
  *
  * All operations will wait for a SIGINT before finishing so that the function
  * implementation can be verified.
@@ -26,7 +27,7 @@
  * Author: Renato Mascarenhas Costa
  */
 
-#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE 700
 
 #include <limits.h>
 #ifndef LONG_MIN
@@ -41,13 +42,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { SIGHOLD = 1, SIGRELSE = 2, SIGIGNORE = 3, SIGPAUSE = 4 };
+typedef void (*sighandler_t)(int);
+
+enum { SIGSET = 1, SIGHOLD = 2, SIGRELSE = 3, SIGIGNORE = 4, SIGPAUSE = 5 };
 
 static void helpAndLeave(const char *progname, int status);
 static void pexit(const char *fCall);
 
 static void handler(int sig);
 
+static sighandler_t _sigset(int sig, sighandler_t handler);
 static int _sighold(int sig);
 static int _sigrelse(int sig);
 static int _sigignore(int sig);
@@ -70,6 +74,15 @@ main(int argc, char *argv[]) {
   }
 
   switch (operation) {
+    case SIGSET:
+      if (_sigset(SIGINT, handler) == (sighandler_t) -1) {
+        pexit("_sigset");
+      }
+
+      printf("Changed disposition of SIGSET. Type Ctrl-C to see its handler.\n");
+      pause();
+
+      break;
     case SIGHOLD:
       if (_sighold(SIGINT) == -1) {
         pexit("_sighold");
@@ -114,6 +127,32 @@ main(int argc, char *argv[]) {
   }
 
   exit(EXIT_SUCCESS);
+}
+
+static sighandler_t
+_sigset(int sig, sighandler_t handler) {
+  sigset_t blocked_signals;
+  struct sigaction act, oldact;
+
+  if (sigprocmask(SIG_BLOCK, NULL, &blocked_signals) == -1) {
+    return (sighandler_t) -1;
+  }
+
+  act.sa_handler = handler;
+  if (sigaction(sig, &act, &oldact) == -1) {
+    return (sighandler_t) -1;
+  }
+
+  if (handler == SIG_HOLD) {
+    _sighold(sig);
+    return oldact.sa_handler;
+  }
+
+  if (sigismember(&blocked_signals, sig)) {
+    return SIG_HOLD;
+  } else {
+    return oldact.sa_handler;
+  }
 }
 
 static int
