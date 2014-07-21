@@ -1,7 +1,7 @@
 /* rtsig_sender.c - send realtime signals.
  *
  * This is an utility program that sends realtime signals to a given process
- * passing a long an integer value as data and can send signals multiple times.
+ * passing along an integer value as data and can send signals multiple times.
  *
  * Usage
  *

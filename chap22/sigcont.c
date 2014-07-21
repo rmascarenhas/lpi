@@ -64,7 +64,6 @@ main() {
     pexit("sigprocmask");
   }
 
-  errno = 0;
   printf("SIGCONT (%s) blocked. Please suspend me (Ctrl-Z on most shells)\n", strsignal(SIGCONT));
   while (!got_tstp) {
     pause();

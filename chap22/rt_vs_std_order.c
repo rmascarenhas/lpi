@@ -10,7 +10,7 @@
  * program can be used to identify how the underlying platform handles this scenario.
  *
  * It does that by changing the disposition and blocking every signal.
- * Then, it sleepts for a given number of seconds, waiting for signals to be sent.
+ * Then, it sleeps for a given number of seconds, waiting for signals to be sent.
  * The user should send standard and realtime signals during this period. When
  * the process wakes up, the handlers are run (printing information about the
  * handled signal) and the process finishes.
