@@ -1,7 +1,7 @@
 /* abort.c - implements the abort(3) library function.
  *
- * The `abort(3)` function can be used to terminate a program. It does so by triggering
- * a SIGABRT signal to the calling process, whose default action is to termiante
+ * The `abort(3)` function can be used to termiate a program. It does so by triggering
+ * a SIGABRT signal to the calling process, whose default action is to terminate
  * the process generating a core dump. SUSv3 specifies that the `abort` function
  * must terminate the process for every program that has a handler that returns.
  *
@@ -105,7 +105,16 @@ main(int argc, char *argv[]) {
 
 static void
 _abort() {
+  sigset_t sigabrt;
   struct sigaction oldHandler;
+
+  /* first of all, unblock SIGABRT */
+  sigemptyset(&sigabrt);
+  sigaddset(&sigabrt, SIGABRT);
+
+  if (sigprocmask(SIG_UNBLOCK, &sigabrt, NULL) == -1) {
+    pexit("sigprocmask");
+  }
 
   if (sigaction(SIGABRT, NULL, &oldHandler) == -1) {
     pexit("sigaction");
@@ -124,7 +133,7 @@ _abort() {
     /* a custom handler for SIGABRT was specified. We just send the signal and,
      * in case the handler returns, we just remove the handler and re-raise the
      * signal, after performing cleanup. If the handler does not return, then
-     * execution continues noramally. */
+     * execution continues normally. */
     raise(SIGABRT);
 
     /* if we get to this point, the handler returned */
