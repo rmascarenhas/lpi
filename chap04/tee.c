@@ -90,10 +90,6 @@ main(int argc, char *argv[]) {
   }
 
   while ((numRead = read(STDIN_FILENO, buf, BUF_SIZ)) > 0) {
-    if (numRead == -1) {
-      failure("read");
-    }
-
     if (write(STDOUT_FILENO, buf, numRead) != numRead) {
       failure("write");
     }
@@ -104,6 +100,11 @@ main(int argc, char *argv[]) {
       }
     }
   }
+
+  if (numRead == -1) {
+    failure("read");
+  }
+
 
   for (i = 0; i < numFiles; ++i) {
     if (close(fds[i]) == -1) {
