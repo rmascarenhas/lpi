@@ -10,19 +10,22 @@
  *
  * Usage
  *
- *    $ ./logout <ut_line> [utmp_file]
+ *    $ ./logout <ut_line> [utmp_file] [wtmp_file]
  *    ut_line   - the name of the controlling terminal of the running shell.
  *    utmp_file - the path for the utmp file to be used. Default: _PATH_UTMP
+ *    wtmp_file - the path for the wtmp file to be used. Default: _PATH_WTMP
  *
  * Example
  *
- * 	  $ ./logout pts/0 /var/run/utmp
+ * 	  $ ./logout pts/0 /var/run/utmp /var/log/wtmp
  *
  * After program execution, the `last(1)` command can be used to verify
  * its effect.
  *
  * Author: Renato Mascarenhas Costa
  */
+
+#define _GNU_SOURCE /* updwtmpx */
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -41,16 +44,21 @@ static void pexit(const char *fname);
 
 static int _logout(const char *ut_line);
 
+static char *utmp_file = _PATH_UTMP,
+			*wtmp_file = _PATH_WTMP;
+
 int
 main(int argc, char *argv[]) {
 	if (argc == 1)
 		helpAndLeave(argv[0], EXIT_FAILURE);
 
-	char *ut_line  = argv[1],
-		 *utmp_file = argv[2];
+	char *ut_line  = argv[1];
 
-	if (utmp_file == NULL)
-		utmp_file = _PATH_UTMP;
+	if (argc > 2)
+		utmp_file = argv[2];
+
+	if (argc > 3)
+		wtmp_file = argv[3];
 
 	utmpname(utmp_file);
 	if (_logout(ut_line) == 0)
@@ -92,6 +100,7 @@ _logout(const char *ut_line) {
 	if (errno != 0)
 		return 0;
 
+	/* commit the change to the utmp file */
 	if (pututxline(entry) == NULL)
 		return 0;
 
@@ -99,6 +108,9 @@ _logout(const char *ut_line) {
 	endutxent();
 	if (errno != 0)
 		return 0;
+
+	/* commit the change to the wtmp file */
+	updwtmpx(wtmp_file, entry);
 
 	return 1;
 }
@@ -110,7 +122,7 @@ helpAndLeave(const char *progname, int status) {
 	if (status == EXIT_SUCCESS)
 		stream = stdout;
 
-	fprintf(stream, "Usage: %s <ut_line> [utmp_file]\n", progname);
+	fprintf(stream, "Usage: %s <ut_line> [utmp_file] [wtmp_file]\n", progname);
 	exit(status);
 }
 
