@@ -43,6 +43,10 @@
  * Author: Renato Mascarenhas Costa
  */
 
+/* get definition of `strsignal` */
+#define _GNU_SOURCE
+#define _XOPEN_SOURCE (700)
+
 #include "common.h"
 #include <utmp.h>
 #include <utmpx.h>
@@ -66,6 +70,7 @@
 
 static void init(void);
 static void cleanup(void);
+static void cleanupHandler(int sig);
 static void childHandler(int sig);
 static void serveRequest(const struct requestMsg *req);
 
@@ -85,6 +90,18 @@ main() {
 	if (sigaction(SIGCHLD, &sa, NULL) == -1)
 		pexit("sigaction");
 
+	/* cleanup when a deadly signal is received */
+	/* SIGINT */
+	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = cleanupHandler;
+	if (sigaction(SIGINT, &sa, NULL) == -1)
+		pexit("sigaction");
+
+	/* SIGTERM */
+	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = cleanupHandler;
+	if (sigaction(SIGTERM, &sa, NULL) == -1)
+		pexit("sigaction");
 	if (atexit(cleanup) == -1)
 		pexit("atexit");
 
@@ -254,6 +271,17 @@ cleanup() {
 
 	/* close syslog */
 	closelog();
+}
+
+static void
+cleanupHandler(int sig) {
+	/* let parent process know that the child was killed via a signal, as opposed
+	 * to a regular termination */
+	syslog(LOG_INFO, "Received %s, terminating", strsignal(sig));
+	cleanup();
+
+	signal(sig, SIG_DFL);
+	raise(sig);
 }
 
 static void
