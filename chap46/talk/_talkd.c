@@ -47,6 +47,7 @@
 #include <utmp.h>
 #include <utmpx.h>
 #include <ftw.h>
+#include <syslog.h>
 #include <stdbool.h>
 
 #define MAX_CHILDREN       (128)                    /* do not fork more than MAX_CHILDREN processes */
@@ -140,6 +141,7 @@ init() {
 		 * check above */
 		if (errno == EEXIST) {
 			fprintf(stderr, "The file %s already exists. Another instance still running?\n", SERVER_QID_PATH);
+			exit(EXIT_FAILURE);
 		}
 
 		/* another error happened */
@@ -157,6 +159,9 @@ init() {
 
 	if (close(fd) == -1)
 		pexit("close");
+
+	/* configure syslog */
+	openlog(PROGNAME, LOG_CONS | LOG_PID | LOG_PERROR, LOG_USER);
 }
 
 static int
@@ -303,8 +308,10 @@ requestConnection(const char *from, const char *to) {
 
 	errno = 0;
 	setutxent();
-	if (errno != 0)
+	if (errno != 0) {
+		syslog(LOG_WARNING, "Could not open utpm file");
 		return 0;
+	}
 
 	while ((ut = getutxent()) != NULL) {
 		/* find a login entry for the recipient username */
@@ -321,8 +328,10 @@ requestConnection(const char *from, const char *to) {
 	snprintf(ttyPath, PATH_MAX, "/dev/%s", tty);
 
 	fd = open(ttyPath, O_WRONLY | S_IWUSR);
-	if (fd == -1)
+	if (fd == -1) {
+		syslog(LOG_WARNING, "Failed to open TTY device: %s", ttyPath);
 		return 0;
+	}
 
 	/* error handling in the functions above supressed since they cannot be
 	 * indicated back to the _talk caller */
@@ -353,7 +362,7 @@ connect(const struct requestMsg *req) {
 
 	if (readConnFile(req->fromUsername, req->toUsername, &fromQ) == -1) {
 		/* error reading the file, request cannot be processed */
-		printf(">> Could not read connection file (%s/%s)\n", req->fromUsername, req->toUsername);
+		syslog(LOG_ERR, "Could not read connection file (%s -> %s)", req->fromUsername, req->toUsername);
 		connFailure(req, "Connection Failure");
 		return;
 	}
@@ -365,7 +374,7 @@ connect(const struct requestMsg *req) {
 	}
 
 	if (readConnFile(req->toUsername, req->fromUsername, &toQ) == -1) {
-		printf(">> Could not read connection file (%s/%s)\n", req->toUsername, req->fromUsername);
+		syslog(LOG_ERR, "Could not read connection file (%s -> %s)", req->toUsername, req->fromUsername);
 		connFailure(req, "Connection Failure");
 		return;
 	}
@@ -379,14 +388,14 @@ connect(const struct requestMsg *req) {
 	} else {
 		/* opposite connection already exists - confirm connection on both ends */
 		if (connectionAccepted(toQ) == -1 || connectionAccepted(req->clientId) == -1) {
-			printf(">> Could not send connection acceptance\n");
+			syslog(LOG_WARNING, "Could not send connection acceptance");
 			connFailure(req, "Connection Failure");
 			return;
 		}
 	}
 
 	if (writeConnFile(req->fromUsername, req->toUsername, req->clientId) == -1) {
-		printf(">> Could not write connection file (%s/%s)\n", req->fromUsername, req->toUsername);
+		syslog(LOG_ERR, "Could not write connection file (%s -> %s)", req->fromUsername, req->toUsername);
 		connFailure(req, "Connection Failure");
 		return;
 	}
