@@ -60,6 +60,10 @@
 #define BUFSIZE (1024)
 #define PROGNAME ("_talk")
 
+/* if system does not define the maximum number of open file descriptors,
+ * make a guess */
+#define MAX_FD_GUESS (8192)
+
 static void init(void);
 static void cleanup(void);
 static void childHandler(int sig);
@@ -117,6 +121,66 @@ main() {
 	exit(EXIT_SUCCESS);
 }
 
+/* transforms the running process into a daemon process. Inspired by listing on
+ * section 37.2 of The Linux Programming Interface, by Michael Kerrisk */
+static void
+becomeDaemon() {
+	int fd, maxfd;
+
+	/* 1. become a background process */
+	switch (fork()) {
+		case -1: pexit("fork");
+		case 0:  break;
+		default: _exit(EXIT_SUCCESS);
+	}
+
+	/* 2. create a new session */
+	if (setsid() == -1) {
+		syslog(LOG_EMERG, "Failed to become a session leader, terminating.");
+		pexit("setsid");
+	}
+
+	/* 3. do not be the session leader - fork a new child again */
+	switch (fork()) {
+		case -1: pexit("fork");
+		case 0:  break;
+		default: _exit(EXIT_SUCCESS);
+	}
+
+	/* 4. Clear file mode creation mask */
+	umask(0);
+
+	/* 5. Change to the root directory */
+	chdir("/");
+
+	/* 6. Close all open files */
+	maxfd = sysconf(_SC_OPEN_MAX);
+	if (maxfd == -1) /* if not available, guess */
+		maxfd = MAX_FD_GUESS;
+
+	for (fd = 0; fd < maxfd; ++fd)
+		close(fd);
+
+	/* 7. Reopen standard file descriptors to /dev/null */
+	close(STDIN_FILENO);
+	fd = open("/dev/null", O_RDWR);
+
+	if (fd != STDIN_FILENO) {
+		syslog(LOG_EMERG, "Failure to reopen standard input on /dev/null");
+		pexit("stdin");
+	}
+
+	if (dup2(STDIN_FILENO, STDOUT_FILENO) != STDOUT_FILENO) {
+		syslog(LOG_EMERG, "Failure to reopen standard output on /dev/null");
+		pexit("stdout");
+	}
+
+	if (dup2(STDIN_FILENO, STDERR_FILENO) != STDERR_FILENO) {
+		syslog(LOG_EMERG, "Failure to reopen standard error on /dev/null");
+		pexit("stderr");
+	}
+}
+
 static void
 init() {
 	int fd;
@@ -162,6 +226,9 @@ init() {
 
 	/* configure syslog */
 	openlog(PROGNAME, LOG_CONS | LOG_PID | LOG_PERROR, LOG_USER);
+
+	/* move to the background */
+	becomeDaemon();
 }
 
 static int
@@ -184,6 +251,9 @@ cleanup() {
 	/* remove the message queue */
 	if (msgctl(serverId, IPC_RMID, NULL) == -1)
 		pexit("msgctl");
+
+	/* close syslog */
+	closelog();
 }
 
 static void
