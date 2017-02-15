@@ -18,11 +18,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* use a static, well known key for the server's message queue */
-#define SERVER_KEY (0x1aaaaaa1)
+#define TALK_CONN_DIR   "/tmp/.talkd"          /* manage connections under this path */
+#define SERVER_QID_PATH (TALK_CONN_DIR "/key") /* path to the file containing the server's queue identifier */
 
-/* use a static sized buffer when transmitting messages */
-#define DATA_SIZE (1024)
+#define DATA_SIZE (1024) /* use a static sized buffer when transmitting messages */
+#define MAX_SV_QUEUE_ID_LEN (32) /* System V message queue ID should not be longer than 32 characters */
 
 struct requestMsg {                    /* connection requests: from clients to the server */
 	long mtype;                        /* message type - always TALK_MT_REQ_CONNECT */

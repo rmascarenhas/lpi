@@ -46,12 +46,11 @@
 #include "common.h"
 #include <utmp.h>
 #include <utmpx.h>
+#include <ftw.h>
 #include <stdbool.h>
 
-#define MAX_SV_QUEUE_ID_LEN (32)                     /* System V message queue ID should not be longer than 32 characters */
-#define MAX_CHILDREN        (128)                    /* do not fork more than MAX_CHILDREN processes */
-#define TALK_CONN_DIR       "/tmp/.talkd"            /* manage connections under this path */
-#define CONN_FILE_TEMPLATE  (TALK_CONN_DIR "/%s:%s") /* template for full path of connection files */
+#define MAX_CHILDREN       (128)                    /* do not fork more than MAX_CHILDREN processes */
+#define CONN_FILE_TEMPLATE (TALK_CONN_DIR "/%s:%s") /* template for full path of connection files */
 
 #define T_VERIFY (1) /* if the connection already exists, do not error out */
 
@@ -61,20 +60,18 @@
 #define PROGNAME ("_talk")
 
 static void init(void);
+static void cleanup(void);
 static void childHandler(int sig);
 static void serveRequest(const struct requestMsg *req);
+
+static key_t serverId;
 
 int
 main() {
 	struct requestMsg req;
 	pid_t pid;
 	ssize_t msgLen;
-	int serverId;
 	struct sigaction sa;
-
-	serverId = msgget(SERVER_KEY, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
-	if (serverId == -1)
-		pexit("msgget");
 
 	/* SIGCHLD to reap terminated children (serving requests) */
 	sigemptyset(&sa.sa_mask);
@@ -82,6 +79,9 @@ main() {
 	sa.sa_handler = childHandler;
 	if (sigaction(SIGCHLD, &sa, NULL) == -1)
 		pexit("sigaction");
+
+	if (atexit(cleanup) == -1)
+		pexit("atexit");
 
 	init();
 
@@ -118,7 +118,10 @@ main() {
 
 static void
 init() {
-	if (mkdir(TALK_CONN_DIR, S_IRUSR | S_IWUSR | S_IXUSR) == -1) {
+	int fd;
+	char id[MAX_SV_QUEUE_ID_LEN];
+
+	if (mkdir(TALK_CONN_DIR, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP) == -1) {
 		/* temporary directory already exists - probably because there is another
 		 * instance of the daemon already running, or a previous run was killed
 		 * with SIGKILL */
@@ -130,6 +133,52 @@ init() {
 		/* other error happened - abort */
 		pexit("mkdir");
 	}
+
+	fd = open(SERVER_QID_PATH, O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IRGRP);
+	if (fd == -1) {
+		/* server queue ID file already exists - same situation as temporary directory
+		 * check above */
+		if (errno == EEXIST) {
+			fprintf(stderr, "The file %s already exists. Another instance still running?\n", SERVER_QID_PATH);
+		}
+
+		/* another error happened */
+		pexit("open");
+	}
+
+    serverId = msgget(IPC_PRIVATE, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR | S_IWGRP);
+    if (serverId == -1)
+		pexit("msgget");
+
+	/* write server queue ID to the well-known file for clients to read */
+	snprintf(id, MAX_SV_QUEUE_ID_LEN, "%d", serverId);
+	if (write(fd, id, strlen(id)) == -1)
+		pexit("write");
+
+	if (close(fd) == -1)
+		pexit("close");
+}
+
+static int
+removalFn(const char *fpath, __attribute__((unused)) const struct stat *sb, int typeflag) {
+	if (typeflag == FTW_F) {
+		if (unlink(fpath) == -1)
+			return -1;
+	}
+
+	return 0;
+}
+
+static void
+cleanup() {
+	/* remove the temporary directory where connection files are kept */
+	ftw(TALK_CONN_DIR, removalFn, 2);
+	if (rmdir(TALK_CONN_DIR) == -1)
+		pexit("rmdir");
+
+	/* remove the message queue */
+	if (msgctl(serverId, IPC_RMID, NULL) == -1)
+		pexit("msgctl");
 }
 
 static void

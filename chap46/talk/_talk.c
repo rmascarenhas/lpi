@@ -18,6 +18,7 @@
 
 static void cleanup(void);
 static void logout(void);
+static void readServerId(void);
 static void helpAndExit(const char *progname, int status);
 static void childHandler(int sig);
 
@@ -45,9 +46,7 @@ main(int argc, char *argv[]) {
 		helpAndExit(argv[0], EXIT_FAILURE);
 	}
 
-	serverId = msgget(SERVER_KEY, S_IWUSR);
-	if (serverId == -1)
-		pexit("msgget");
+	readServerId();
 
 	clientId = msgget(IPC_PRIVATE, S_IRUSR | S_IWUSR | S_IWGRP);
 	if (clientId == -1)
@@ -110,6 +109,45 @@ logout() {
 		if (kill(childPid, SIGTERM) == -1)
 			pexit("kill");
 	}
+}
+
+static void
+readServerId() {
+	int fd;
+	char id[MAX_SV_QUEUE_ID_LEN];
+	char *endptr;
+	ssize_t numRead;
+	long res;
+
+	fd = open(SERVER_QID_PATH, O_RDONLY);
+	if (fd == -1) {
+		/* if the file was not found, display helpful error message about the possibility
+		 * that the server was not started */
+		if (errno == ENOENT) {
+			fprintf(stderr, "Error: server key file not found. Is the server running?\n");
+			exit(EXIT_FAILURE);
+		}
+
+		/* other error */
+		pexit("open");
+	}
+
+	if ((numRead = read(fd, id, MAX_SV_QUEUE_ID_LEN)) == -1)
+		pexit("read");
+
+	/* make sure the id is properly terminated */
+	id[numRead] = '\0';
+
+	res = strtol(id, &endptr, 10);
+	if (*endptr != '\0' || res == LONG_MIN || res == LONG_MAX || res > INT_MAX) {
+		fprintf(stderr, "Tainted server key file. Terminating\n");
+		exit(EXIT_FAILURE);
+	}
+
+	serverId = (int) res;
+
+	if (close(fd) == -1)
+		pexit("close");
 }
 
 static void
