@@ -527,9 +527,13 @@ disconnect(const struct requestMsg *req) {
 	if (readConnFile(req->toUsername, req->fromUsername, &toQ) == -1)
 		return;
 
-	if (removeConnFile(req->fromUsername, req->toUsername) == -1 ||
-			removeConnFile(req->toUsername, req->fromUsername) == -1)
+	/* since `fromUsername` is disconnecting, the from -> to connection must exist */
+	if (removeConnFile(req->fromUsername, req->toUsername) == -1)
 		return;
+
+	/* the opposite connection, to -> from, might not exist (i.e., if the requester
+	 * timeout waiting for a reply from the recipient, for example) */
+	removeConnFile(req->toUsername, req->fromUsername);
 
 	dropReq.mtype = TALK_MT_REQ_TALK_CONN_DROP;
 	msgsnd(toQ, &dropReq, TALK_REQ_MSG_SIZE, 0);

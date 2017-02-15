@@ -16,11 +16,16 @@
 
 #include "common.h"
 
+/* By default, wait for at most a number of seconds before giving up chatting with
+ * the requested user */
+#define WAIT_CONNECTION_TIMEOUT (10)
+
 static void cleanup(void);
 static void logout(void);
 static void readServerId(void);
 static void helpAndExit(const char *progname, int status);
 static void childHandler(int sig);
+static void alarmHandler(int sig);
 
 static void spawnListener(void);
 static void chatLoop(void);
@@ -41,6 +46,7 @@ main(int argc, char *argv[]) {
 	struct responseMsg res;
 	struct sigaction sa;
 	ssize_t msgLen;
+	int savedErrno;
 
 	if (argc != 2) {
 		helpAndExit(argv[0], EXIT_FAILURE);
@@ -61,6 +67,14 @@ main(int argc, char *argv[]) {
 	if (sigaction(SIGCHLD, &sa, NULL) == -1)
 		pexit("sigaction");
 
+	/* ignore SIGALRM, which can be raised if the wait for a message on the message
+	 * queue times out */
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sa.sa_handler = alarmHandler;
+	if (sigaction(SIGALRM, &sa, NULL) == -1)
+		pexit("sigaction");
+
 	recipient = argv[1];
 
 	/* Request connection to talk with username on argv[1] */
@@ -73,9 +87,29 @@ main(int argc, char *argv[]) {
 	if (msgsnd(serverId, &req, TALK_REQ_MSG_SIZE, 0) == -1)
 		pexit("msgsnd");
 
+	/* set an alarm so that we do not wait indefinitely for the recipient to accept
+	 * the connection request */
+	alarm(WAIT_CONNECTION_TIMEOUT);
 	msgLen = msgrcv(clientId, &res, TALK_RES_MSG_SIZE, 0, 0);
-	if (msgLen == -1)
-		pexit("msgrcv");
+
+	/* make sure the call to `alarm` will not change the value of errno from msgsnd */
+	savedErrno = errno;
+	alarm(0);
+	errno = savedErrno;
+
+	if (msgLen == -1) {
+		/* system call was interrupted - timeout */
+		if (errno == EINTR)
+			fprintf(stderr, "Timeout: %s did not reply back in %ds\n", recipient, WAIT_CONNECTION_TIMEOUT);
+		else /* other error */
+			perror("msgrcv");
+
+		/* timeout or error reading from the queue: indicate to the server that we
+		 * are no longer connected */
+		logout();
+
+		exit(EXIT_FAILURE);
+	}
 
 	switch (res.mtype) {
 		case TALK_MT_RES_CONNECT_ACCEPT:
@@ -246,6 +280,9 @@ childHandler(__attribute__((unused)) int sig) {
 		exit(EXIT_FAILURE);
 	}
 }
+
+static void
+alarmHandler(__attribute__((unused)) int sig) {}
 
 static void
 cleanup() {
