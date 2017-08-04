@@ -1,0 +1,27 @@
+// Example script for `nv`, a name-value service. This script exercises
+// every functionality implemented by the `nv` command. See the README.md
+// file for more information.
+//
+// This script can be run using:
+// 	$ ./nv example_script.txt
+
+set os linux      // set the `os` key to "linux"
+setifnone prog nv // if the `prog` key is not set, assign the value "nv" to it
+
+get os           // gets the value associated with the `os` key
+assign osName $_ // assigns the value above, if any, to a variable called `osName`
+
+get prog           // gets the value associated with the `prog` key
+assign progName $_ // assigns the value above, if any, to a variable called `progName`
+
+assign msg The value of // assigns a variable called `msg` to the "The value of" string
+
+print $msg os is $osName     // prints "The value of os is ${content of variable `osName`}
+print $msg name is $progName // prints "The value of name is ${content of variable `progName`}
+
+delete os // deletes any value associated with the key `os`
+get os    // gets the value associated with the key `os` (in this case, there will not be any)
+assign osName $_ // assigns the value in the `os` key to the `osName` variable.
+
+print os is now $osName // prints "os is now ${content of variable `osName`}
+print Goodbye.          // prints "Goodbye."
